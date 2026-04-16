@@ -1,0 +1,462 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Unit Conversion Master</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;800;900&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Nunito', sans-serif;
+            background-color: #f0fdf4;
+            color: #1e293b;
+            margin: 0;
+            padding: 0;
+            min-height: 100vh;
+        }
+        
+        .fade-in {
+            animation: fadeIn 0.4s ease-in-out;
+        }
+
+        .slide-up {
+            animation: slideUp 0.4s ease-out;
+        }
+
+        .bounce {
+            animation: bounce 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+
+        @keyframes slideUp {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        @keyframes bounce {
+            0% { transform: scale(0.8); opacity: 0; }
+            50% { transform: scale(1.05); opacity: 1; }
+            100% { transform: scale(1); opacity: 1; }
+        }
+
+        /* Hide number input arrows */
+        input[type=number]::-webkit-inner-spin-button, 
+        input[type=number]::-webkit-outer-spin-button { 
+            -webkit-appearance: none; 
+            margin: 0; 
+        }
+        input[type=number] {
+            -moz-appearance: textfield;
+        }
+
+        .glass-panel {
+            background: rgba(255, 255, 255, 0.95);
+            box-shadow: 0 10px 25px rgba(0,0,0,0.05);
+            border: 2px solid #e2e8f0;
+        }
+    </style>
+</head>
+<body class="antialiased flex flex-col items-center justify-center p-4">
+
+    <div id="app" class="w-full max-w-2xl w-full"></div>
+
+    <script>
+        // --- DATA DICTIONARY ---
+        const unitData = [
+            // Customary Length
+            { largeS: 'foot', largeP: 'feet', smallS: 'inch', smallP: 'inches', factor: 12, system: 'customary', type: 'length' },
+            { largeS: 'yard', largeP: 'yards', smallS: 'foot', smallP: 'feet', factor: 3, system: 'customary', type: 'length' },
+            { largeS: 'mile', largeP: 'miles', smallS: 'foot', smallP: 'feet', factor: 5280, system: 'customary', type: 'length' },
+            // Customary Capacity
+            { largeS: 'cup', largeP: 'cups', smallS: 'fluid ounce', smallP: 'fluid ounces', factor: 8, system: 'customary', type: 'capacity' },
+            { largeS: 'pint', largeP: 'pints', smallS: 'cup', smallP: 'cups', factor: 2, system: 'customary', type: 'capacity' },
+            { largeS: 'quart', largeP: 'quarts', smallS: 'pint', smallP: 'pints', factor: 2, system: 'customary', type: 'capacity' },
+            { largeS: 'gallon', largeP: 'gallons', smallS: 'quart', smallP: 'quarts', factor: 4, system: 'customary', type: 'capacity' },
+            // Customary Weight
+            { largeS: 'pound', largeP: 'pounds', smallS: 'ounce', smallP: 'ounces', factor: 16, system: 'customary', type: 'weight' },
+            { largeS: 'ton', largeP: 'tons', smallS: 'pound', smallP: 'pounds', factor: 2000, system: 'customary', type: 'weight' },
+            
+            // Metric Length
+            { largeS: 'centimeter', largeP: 'centimeters', smallS: 'millimeter', smallP: 'millimeters', factor: 10, system: 'metric', type: 'length' },
+            { largeS: 'meter', largeP: 'meters', smallS: 'centimeter', smallP: 'centimeters', factor: 100, system: 'metric', type: 'length' },
+            { largeS: 'kilometer', largeP: 'kilometers', smallS: 'meter', smallP: 'meters', factor: 1000, system: 'metric', type: 'length' },
+            // Metric Capacity
+            { largeS: 'liter', largeP: 'liters', smallS: 'milliliter', smallP: 'milliliters', factor: 1000, system: 'metric', type: 'capacity' },
+            // Metric Weight (Mass)
+            { largeS: 'kilogram', largeP: 'kilograms', smallS: 'gram', smallP: 'grams', factor: 1000, system: 'metric', type: 'weight' }
+        ];
+
+        // --- SVGS ---
+        const icons = {
+            check: `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" class="text-green-500"><polyline points="20 6 9 17 4 12"></polyline></svg>`,
+            x: `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" class="text-red-500"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>`,
+            star: `<svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="#fbbf24" stroke="#f59e0b" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon></svg>`,
+            back: `<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="19" y1="12" x2="5" y2="12"></line><polyline points="12 19 5 12 12 5"></polyline></svg>`,
+            lightbulb: `<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="5"></circle><line x1="12" y1="1" x2="12" y2="3"></line><line x1="12" y1="21" x2="12" y2="23"></line><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line><line x1="1" y1="12" x2="3" y2="12"></line><line x1="21" y1="12" x2="23" y2="12"></line><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line></svg>`
+        };
+
+        // --- STATE MANAGEMENT ---
+        let state = {
+            view: 'home', // home, menu, play
+            system: null,
+            type: null,
+            score: 0,
+            problem: null,
+            currentStep: 1, // 1: Direction, 2: Factor, 3: Math, 4: Done
+            feedback: { show: false, text: '', isError: false }
+        };
+
+        const appEl = document.getElementById('app');
+
+        // --- UTILS ---
+        function rInt(min, max) {
+            return Math.floor(Math.random() * (max - min + 1)) + min;
+        }
+
+        // --- CORE LOGIC ---
+        function startNewProblem() {
+            // Filter available rules based on selection
+            const rules = unitData.filter(u => u.system === state.system && u.type === state.type);
+            const rule = rules[Math.floor(Math.random() * rules.length)];
+            
+            // Randomly decide direction (Big to Small OR Small to Big)
+            const isMultiply = Math.random() > 0.5;
+            
+            let givenAmt, givenUnit, targetUnit, correctAns;
+
+            if (isMultiply) {
+                // BIG -> SMALL (Multiply)
+                givenAmt = rInt(2, 12);
+                givenUnit = rule.largeP;
+                targetUnit = rule.smallP;
+                correctAns = givenAmt * rule.factor;
+            } else {
+                // SMALL -> BIG (Divide)
+                correctAns = rInt(2, 12);
+                givenAmt = correctAns * rule.factor;
+                givenUnit = rule.smallP;
+                targetUnit = rule.largeP;
+            }
+
+            state.problem = {
+                rule: rule,
+                isMultiply: isMultiply,
+                givenAmt: givenAmt,
+                givenUnit: givenUnit,
+                targetUnit: targetUnit,
+                correctAns: correctAns
+            };
+            state.currentStep = 1;
+            state.feedback = { show: false, text: '', isError: false };
+            render();
+        }
+
+        function checkStep1(selectedOperation) {
+            const isCorrect = (selectedOperation === 'multiply' && state.problem.isMultiply) || 
+                              (selectedOperation === 'divide' && !state.problem.isMultiply);
+            
+            if (isCorrect) {
+                state.currentStep = 2;
+                state.feedback = { show: true, text: "Correct! Good job thinking about unit sizes.", isError: false };
+            } else {
+                const hint = state.problem.isMultiply 
+                    ? `Oops! ${state.problem.givenUnit} are BIGGER than ${state.problem.targetUnit}. Going Big to Small means we MULTIPLY.`
+                    : `Oops! ${state.problem.givenUnit} are SMALLER than ${state.problem.targetUnit}. Going Small to Big means we DIVIDE.`;
+                state.feedback = { show: true, text: hint, isError: true };
+            }
+            render();
+            clearFeedbackAfterDelay();
+        }
+
+        function checkStep2(factorInput) {
+            const inputVal = parseInt(factorInput, 10);
+            if (inputVal === state.problem.rule.factor) {
+                state.currentStep = 3;
+                state.feedback = { show: true, text: "Exactly! You remembered the factor.", isError: false };
+            } else {
+                state.feedback = { show: true, text: `Not quite. Think about how many ${state.problem.rule.smallP} are in 1 ${state.problem.rule.largeS}.`, isError: true };
+            }
+            render();
+            clearFeedbackAfterDelay();
+        }
+
+        function showHintStep2() {
+            state.feedback = { show: true, text: `Hint: 1 ${state.problem.rule.largeS} = ${state.problem.rule.factor} ${state.problem.rule.smallP}.`, isError: false };
+            render();
+        }
+
+        function checkStep3(answerInput) {
+            const inputVal = parseInt(answerInput, 10);
+            if (inputVal === state.problem.correctAns) {
+                state.currentStep = 4;
+                state.score += 1;
+                state.feedback = { show: false, text: '', isError: false }; // Clear feedback for success state
+            } else {
+                state.feedback = { show: true, text: `Check your math. What is ${state.problem.givenAmt} ${state.problem.isMultiply ? '×' : '÷'} ${state.problem.rule.factor}?`, isError: true };
+            }
+            render();
+            clearFeedbackAfterDelay();
+        }
+
+        function clearFeedbackAfterDelay() {
+            if(state.feedback.isError) return; // Keep errors until fixed
+            setTimeout(() => {
+                if(state.feedback.show) {
+                    state.feedback.show = false;
+                    render();
+                }
+            }, 2500);
+        }
+
+        // --- RENDERING ---
+        function render() {
+            let html = '';
+
+            if (state.view === 'home') {
+                html = renderHome();
+            } else if (state.view === 'menu') {
+                html = renderMenu();
+            } else if (state.view === 'play') {
+                html = renderPlay();
+            }
+
+            appEl.innerHTML = html;
+        }
+
+        function renderHome() {
+            return `
+                <div class="text-center mt-10 slide-up max-w-lg mx-auto">
+                    <div class="bg-blue-600 text-white rounded-3xl p-10 shadow-xl border-4 border-blue-400">
+                        <h1 class="text-4xl md:text-5xl font-black mb-4 tracking-tight">Unit Conversion<br><span class="text-yellow-300">Master</span></h1>
+                        <p class="text-lg font-semibold mb-8 text-blue-100">Learn to measure and convert without the confusion!</p>
+                        <button onclick="state.view = 'menu'; render();" class="bg-yellow-400 hover:bg-yellow-300 text-blue-900 font-bold text-2xl py-4 px-10 rounded-full shadow-lg transform transition hover:scale-105 active:scale-95 w-full">
+                            Let's Play!
+                        </button>
+                    </div>
+                </div>
+            `;
+        }
+
+        function renderMenu() {
+            const systemColors = {
+                customary: 'bg-indigo-600 hover:bg-indigo-500 border-indigo-400',
+                metric: 'bg-emerald-600 hover:bg-emerald-500 border-emerald-400'
+            };
+
+            return `
+                <div class="w-full slide-up">
+                    <div class="flex items-center justify-between mb-8">
+                        <button onclick="state.view = 'home'; render();" class="flex items-center text-slate-500 hover:text-slate-800 font-bold transition">
+                            ${icons.back} <span class="ml-2">Back</span>
+                        </button>
+                    </div>
+                    
+                    <h2 class="text-3xl font-black text-center mb-8 text-slate-800">Choose Your Topic</h2>
+                    
+                    <div class="space-y-8">
+                        <!-- Customary -->
+                        <div class="glass-panel p-6 rounded-3xl">
+                            <h3 class="text-2xl font-bold text-indigo-900 mb-4 border-b-2 border-indigo-100 pb-2">Customary Units (US)</h3>
+                            <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                <button onclick="selectTopic('customary', 'length')" class="bg-indigo-100 hover:bg-indigo-200 text-indigo-900 font-bold py-4 px-6 rounded-2xl transition border-2 border-indigo-200 hover:border-indigo-400 shadow-sm">Length <br><span class="text-sm font-normal text-indigo-700">(in, ft, yd, mi)</span></button>
+                                <button onclick="selectTopic('customary', 'capacity')" class="bg-indigo-100 hover:bg-indigo-200 text-indigo-900 font-bold py-4 px-6 rounded-2xl transition border-2 border-indigo-200 hover:border-indigo-400 shadow-sm">Capacity <br><span class="text-sm font-normal text-indigo-700">(c, pt, qt, gal)</span></button>
+                                <button onclick="selectTopic('customary', 'weight')" class="bg-indigo-100 hover:bg-indigo-200 text-indigo-900 font-bold py-4 px-6 rounded-2xl transition border-2 border-indigo-200 hover:border-indigo-400 shadow-sm">Weight <br><span class="text-sm font-normal text-indigo-700">(oz, lb, T)</span></button>
+                            </div>
+                        </div>
+
+                        <!-- Metric -->
+                        <div class="glass-panel p-6 rounded-3xl">
+                            <h3 class="text-2xl font-bold text-emerald-900 mb-4 border-b-2 border-emerald-100 pb-2">Metric Units</h3>
+                            <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                <button onclick="selectTopic('metric', 'length')" class="bg-emerald-100 hover:bg-emerald-200 text-emerald-900 font-bold py-4 px-6 rounded-2xl transition border-2 border-emerald-200 hover:border-emerald-400 shadow-sm">Length <br><span class="text-sm font-normal text-emerald-700">(mm, cm, m, km)</span></button>
+                                <button onclick="selectTopic('metric', 'capacity')" class="bg-emerald-100 hover:bg-emerald-200 text-emerald-900 font-bold py-4 px-6 rounded-2xl transition border-2 border-emerald-200 hover:border-emerald-400 shadow-sm">Capacity <br><span class="text-sm font-normal text-emerald-700">(mL, L)</span></button>
+                                <button onclick="selectTopic('metric', 'weight')" class="bg-emerald-100 hover:bg-emerald-200 text-emerald-900 font-bold py-4 px-6 rounded-2xl transition border-2 border-emerald-200 hover:border-emerald-400 shadow-sm">Mass <br><span class="text-sm font-normal text-emerald-700">(g, kg)</span></button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+
+        function selectTopic(sys, typ) {
+            state.system = sys;
+            state.type = typ;
+            state.view = 'play';
+            startNewProblem();
+        }
+
+        function renderPlay() {
+            const p = state.problem;
+            if (!p) return '';
+
+            const themeColor = state.system === 'customary' ? 'indigo' : 'emerald';
+            
+            // Header
+            let html = `
+                <div class="w-full slide-up max-w-2xl mx-auto">
+                    <!-- Top Bar -->
+                    <div class="flex items-center justify-between mb-6 bg-white py-3 px-6 rounded-full shadow-sm border border-slate-200">
+                        <button onclick="state.view = 'menu'; render();" class="flex items-center text-slate-500 hover:text-slate-800 font-bold transition">
+                            ${icons.back} <span class="ml-2 hidden sm:inline">Menu</span>
+                        </button>
+                        <div class="flex items-center space-x-2 font-black text-2xl text-slate-700">
+                            ${icons.star} <span>Score: ${state.score}</span>
+                        </div>
+                    </div>
+
+                    <!-- Problem Banner -->
+                    <div class="bg-${themeColor}-600 text-white rounded-3xl p-8 shadow-lg text-center mb-6 border-4 border-${themeColor}-400">
+                        <h2 class="text-xl md:text-2xl font-semibold mb-2 text-${themeColor}-100">Convert the following:</h2>
+                        <div class="text-4xl md:text-5xl font-black">
+                            ${p.givenAmt} ${p.givenUnit} = <span class="border-b-4 border-dashed border-white inline-block w-24 md:w-32 text-center text-yellow-300">${state.currentStep === 4 ? p.correctAns : '?'}</span> ${p.targetUnit}
+                        </div>
+                    </div>
+
+                    <!-- Strategy Steps Container -->
+                    <div class="space-y-4">
+            `;
+
+            // STEP 1: Direction
+            html += `
+                <div class="glass-panel rounded-2xl p-6 relative ${state.currentStep > 1 ? 'opacity-70' : 'bounce border-${themeColor}-400 border-2'}">
+                    <div class="flex items-center space-x-3 mb-4">
+                        <div class="bg-${themeColor}-100 text-${themeColor}-800 font-black rounded-full h-8 w-8 flex items-center justify-center">1</div>
+                        <h3 class="text-xl font-bold text-slate-800">Operation Rule</h3>
+                    </div>
+            `;
+            
+            if (state.currentStep === 1) {
+                html += `
+                    <p class="mb-4 text-slate-600 font-semibold">Are we converting to a smaller or larger unit?</p>
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <button onclick="checkStep1('multiply')" class="bg-white border-2 border-slate-200 hover:border-${themeColor}-400 text-slate-700 font-bold py-3 px-4 rounded-xl shadow-sm transition flex flex-col items-center">
+                            <span>Big to Small</span>
+                            <span class="text-${themeColor}-600 text-sm mt-1">Multiply (×)</span>
+                        </button>
+                        <button onclick="checkStep1('divide')" class="bg-white border-2 border-slate-200 hover:border-${themeColor}-400 text-slate-700 font-bold py-3 px-4 rounded-xl shadow-sm transition flex flex-col items-center">
+                            <span>Small to Big</span>
+                            <span class="text-${themeColor}-600 text-sm mt-1">Divide (÷)</span>
+                        </button>
+                    </div>
+                `;
+            } else {
+                html += `
+                    <div class="flex items-center text-green-600 font-bold text-lg bg-green-50 p-3 rounded-xl border border-green-200">
+                        ${icons.check} <span class="ml-2">${p.isMultiply ? 'Big to Small -> MULTIPLY' : 'Small to Big -> DIVIDE'}</span>
+                    </div>
+                `;
+            }
+            html += `</div>`;
+
+            // STEP 2: Factor
+            if (state.currentStep >= 2) {
+                html += `
+                    <div class="glass-panel rounded-2xl p-6 relative ${state.currentStep > 2 ? 'opacity-70' : 'bounce border-${themeColor}-400 border-2'}">
+                        <div class="flex items-center space-x-3 mb-4">
+                            <div class="bg-${themeColor}-100 text-${themeColor}-800 font-black rounded-full h-8 w-8 flex items-center justify-center">2</div>
+                            <h3 class="text-xl font-bold text-slate-800">Conversion Factor</h3>
+                        </div>
+                `;
+                
+                if (state.currentStep === 2) {
+                    html += `
+                        <p class="mb-4 text-slate-600 font-semibold">How many ${p.rule.smallP} are in 1 ${p.rule.largeS}?</p>
+                        <div class="flex flex-col sm:flex-row items-center space-y-4 sm:space-y-0 sm:space-x-4">
+                            <div class="text-xl font-bold text-slate-700 bg-slate-100 py-2 px-4 rounded-xl border border-slate-200">
+                                1 ${p.rule.largeS} = <input type="number" id="step2-input" class="w-20 border-b-4 border-${themeColor}-400 bg-transparent text-center focus:outline-none focus:border-${themeColor}-600 text-2xl font-black mx-2" autocomplete="off"> ${p.rule.smallP}
+                            </div>
+                            <div class="flex space-x-2">
+                                <button onclick="checkStep2(document.getElementById('step2-input').value)" class="bg-${themeColor}-500 hover:bg-${themeColor}-600 text-white font-bold py-2 px-6 rounded-xl shadow transition">Check</button>
+                                <button onclick="showHintStep2()" class="bg-slate-200 hover:bg-slate-300 text-slate-600 font-bold py-2 px-3 rounded-xl shadow-sm transition flex items-center" title="Need a hint?">${icons.lightbulb}</button>
+                            </div>
+                        </div>
+                    `;
+                } else {
+                    html += `
+                        <div class="flex items-center text-green-600 font-bold text-lg bg-green-50 p-3 rounded-xl border border-green-200">
+                            ${icons.check} <span class="ml-2">1 ${p.rule.largeS} = ${p.rule.factor} ${p.rule.smallP}</span>
+                        </div>
+                    `;
+                }
+                html += `</div>`;
+            }
+
+            // STEP 3: Math
+            if (state.currentStep >= 3) {
+                html += `
+                    <div class="glass-panel rounded-2xl p-6 relative ${state.currentStep > 3 ? 'opacity-70' : 'bounce border-${themeColor}-400 border-2'}">
+                        <div class="flex items-center space-x-3 mb-4">
+                            <div class="bg-${themeColor}-100 text-${themeColor}-800 font-black rounded-full h-8 w-8 flex items-center justify-center">3</div>
+                            <h3 class="text-xl font-bold text-slate-800">Solve It!</h3>
+                        </div>
+                `;
+                
+                if (state.currentStep === 3) {
+                    html += `
+                        <div class="flex flex-col sm:flex-row items-center space-y-4 sm:space-y-0 sm:space-x-4">
+                            <div class="text-2xl font-black text-slate-700 bg-slate-100 py-3 px-6 rounded-xl border border-slate-200 flex items-center shadow-inner">
+                                ${p.givenAmt} <span class="text-${themeColor}-500 mx-3">${p.isMultiply ? '×' : '÷'}</span> ${p.rule.factor} <span class="text-slate-400 mx-3">=</span>
+                                <input type="number" id="step3-input" class="w-24 border-b-4 border-${themeColor}-400 bg-transparent text-center focus:outline-none focus:border-${themeColor}-600 text-3xl font-black" autocomplete="off">
+                            </div>
+                            <button onclick="checkStep3(document.getElementById('step3-input').value)" class="bg-${themeColor}-500 hover:bg-${themeColor}-600 text-white font-bold py-3 px-8 rounded-xl shadow-lg transition text-lg w-full sm:w-auto">Finish</button>
+                        </div>
+                    `;
+                } else {
+                     html += `
+                        <div class="flex items-center text-green-600 font-black text-2xl bg-green-50 p-4 rounded-xl border border-green-200 shadow-inner justify-center">
+                            ${icons.star} <span class="ml-3">${p.givenAmt} ${p.isMultiply ? '×' : '÷'} ${p.rule.factor} = ${p.correctAns}</span>
+                        </div>
+                    `;
+                }
+                html += `</div>`;
+            }
+
+            // SUCCESS SCREEN / NEXT BUTTON
+            if (state.currentStep === 4) {
+                 html += `
+                    <div class="mt-8 text-center bounce">
+                        <button onclick="startNewProblem()" class="bg-yellow-400 hover:bg-yellow-300 text-yellow-900 font-black text-2xl py-4 px-12 rounded-full shadow-xl border-4 border-yellow-200 transform transition hover:scale-105 active:scale-95">
+                            Next Question!
+                        </button>
+                    </div>
+                `;
+            }
+
+            html += `</div>`; // End Strategy Container
+
+            // FEEDBACK TOAST
+            if (state.feedback.show) {
+                const fbColors = state.feedback.isError ? 'bg-red-100 border-red-300 text-red-800' : 'bg-blue-100 border-blue-300 text-blue-800';
+                const fbIcon = state.feedback.isError ? icons.x : icons.lightbulb;
+                html += `
+                    <div class="fixed bottom-6 left-1/2 transform -translate-x-1/2 ${fbColors} border-2 px-6 py-4 rounded-2xl shadow-xl font-bold flex items-center space-x-3 slide-up z-50 max-w-sm w-full">
+                        <div>${fbIcon}</div>
+                        <div>${state.feedback.text}</div>
+                    </div>
+                `;
+            }
+
+            return html;
+        }
+
+        // Initialize
+        render();
+
+        // Add event listeners for "Enter" key on inputs
+        document.addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                if (state.currentStep === 2 && document.getElementById('step2-input')) {
+                    checkStep2(document.getElementById('step2-input').value);
+                } else if (state.currentStep === 3 && document.getElementById('step3-input')) {
+                    checkStep3(document.getElementById('step3-input').value);
+                }
+            }
+        });
+    </script>
+</body>
+</html>
