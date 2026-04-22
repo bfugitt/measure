@@ -290,6 +290,55 @@
             startNewProblem();
         }
 
+        function renderMetricChart() {
+            let baseName, baseAbbr;
+            if (state.type === 'length') { baseName = 'Meter'; baseAbbr = 'm'; }
+            else if (state.type === 'capacity') { baseName = 'Liter'; baseAbbr = 'L'; }
+            else if (state.type === 'weight') { baseName = 'Gram'; baseAbbr = 'g'; }
+
+            const prefixes = [
+                { name: 'Kilo', abbr: 'k' },
+                { name: 'Hecto', abbr: 'h' },
+                { name: 'Deca', abbr: 'da' },
+                { name: 'Base', abbr: '' },
+                { name: 'Deci', abbr: 'd' },
+                { name: 'Centi', abbr: 'c' },
+                { name: 'Milli', abbr: 'm' }
+            ];
+
+            let stepsHtml = prefixes.map(p => {
+                const isBase = p.name === 'Base';
+                const label = isBase ? baseAbbr : p.abbr + baseAbbr;
+                const bgClass = isBase ? 'bg-emerald-500 text-white border-emerald-600' : 'bg-white border-emerald-300 text-emerald-800';
+                return `
+                    <div class="flex flex-col items-center z-10 w-8 md:w-10">
+                        <div class="${bgClass} border-2 rounded-lg h-8 w-8 md:h-10 md:w-10 flex items-center justify-center font-bold shadow-sm text-xs md:text-sm">
+                            ${label}
+                        </div>
+                        <span class="text-[10px] md:text-xs text-slate-600 font-bold mt-1 text-center">${p.name}</span>
+                    </div>
+                `;
+            }).join('');
+
+            return `
+                <div class="glass-panel rounded-2xl p-3 md:p-4 mb-4 relative slide-up overflow-hidden">
+                    <div class="flex justify-between items-center text-[10px] md:text-xs font-bold px-1 mb-4">
+                        <span class="text-indigo-600 bg-indigo-50 px-2 py-1 rounded-md border border-indigo-100 flex-1 text-center mr-1">&larr; ÷10 (Decimal Left)</span>
+                        <span class="text-slate-400 font-black tracking-widest hidden sm:block mx-2">SCALE</span>
+                        <span class="text-rose-600 bg-rose-50 px-2 py-1 rounded-md border border-rose-100 flex-1 text-center ml-1">×10 (Decimal Right) &rarr;</span>
+                    </div>
+                    <div class="relative w-full px-2 md:px-4">
+                        <!-- Horizontal connecting line -->
+                        <div class="absolute top-4 md:top-5 left-4 right-4 h-1 bg-emerald-200 z-0 rounded-full"></div>
+                        <!-- Nodes -->
+                        <div class="flex justify-between relative z-10 w-full">
+                            ${stepsHtml}
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+
         function renderPlay() {
             const p = state.problem;
             if (!p) return '';
@@ -308,6 +357,8 @@
                             ${icons.star} <span>Score: ${state.score}</span>
                         </div>
                     </div>
+
+                    ${state.system === 'metric' ? renderMetricChart() : ''}
 
                     <!-- Problem Banner -->
                     <div class="bg-${themeColor}-600 text-white rounded-3xl p-5 shadow-lg text-center mb-4 border-4 border-${themeColor}-400">
